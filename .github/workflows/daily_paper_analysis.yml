@@ -47,6 +47,7 @@ jobs:
     
     - name: Commit and push changes
       run: |
+        cd ..
         git config --global user.name 'curryfromuestc'
         git config --global user.email 'curryfromuestc@gmail.com'
         git add conclusion.md
