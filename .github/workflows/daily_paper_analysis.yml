@@ -47,9 +47,8 @@ jobs:
     
     - name: Commit and push changes
       run: |
-        cd ..
         git config --global user.name 'curryfromuestc'
         git config --global user.email 'curryfromuestc@gmail.com'
-        git add conclusion.md
+        git add ./conclusion.md
         git commit -m "Update paper analysis for $(date +'%Y-%m-%d')" || echo "No changes to commit"
         git push 
