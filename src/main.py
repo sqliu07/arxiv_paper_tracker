@@ -34,8 +34,8 @@ EMAIL_TO = os.getenv("EMAIL_TO")
 
 PAPERS_DIR = Path("./papers")
 CONCLUSION_FILE = Path("./conclusion.md")
-CATEGORIES = ["cs.AR", "cs.LG", "cs.NE", "cs.AI", "eess.SP", "eess.ES", "cs.AR", "cs.ET"]
-MAX_PAPERS = 20  # 设置为1以便快速测试
+CATEGORIES = ["cs.AR", "cs.LG", "cs.NE", "cs.AI", "eess.ES", "cs.ET"]
+MAX_PAPERS = 50  # 设置为1以便快速测试
 
 # 配置OpenAI API用于DeepSeek
 openai.api_key = DEEPSEEK_API_KEY
