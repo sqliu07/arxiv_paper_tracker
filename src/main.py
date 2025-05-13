@@ -14,7 +14,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from jinja2 import Template
+import requests
 
+NTFY_TOPIC = "NNF1mMyoH7xiHAEb"   # 比如你的订阅主题名，如 arxiv-report
+NTFY_URL = "https://ntfy.gabrieliu.tech"     # 或你自建的 ntfy 实例地址
+NTFY_TITLE = "ArXiv论文分析报告"
 # 加载环境变量
 load_dotenv()
 
@@ -24,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # 配置
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_KEY = "sk-3184be32e9674c39809c10ebee922d11"
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME")
@@ -304,6 +308,123 @@ def send_email(content):
     except Exception as e:
         logger.error(f"发送邮件失败: {str(e)}")
 
+def send_ntfy_html(content: str):
+    """使用 HTML 模板，通过 ntfy 推送消息"""
+    if not NTFY_TOPIC or not NTFY_URL:
+        logger.error("ntfy 配置不完整，跳过发送")
+        return
+
+    html_template = """
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                line-height: 1.6;
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            .container {
+                background-color: white;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            h1 {
+                color: #2c3e50;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 10px;
+                margin-bottom: 30px;
+            }
+            h2 {
+                color: #34495e;
+                margin-top: 40px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            h3 {
+                color: #2980b9;
+                margin-top: 30px;
+            }
+            .paper-info {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-left: 4px solid #3498db;
+                margin-bottom: 20px;
+            }
+            .paper-info p {
+                margin: 5px 0;
+            }
+            .paper-info strong {
+                color: #2c3e50;
+            }
+            a {
+                color: #3498db;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+            hr {
+                border: none;
+                border-top: 1px solid #eee;
+                margin: 30px 0;
+            }
+            .section {
+                margin-bottom: 20px;
+            }
+            .section h4 {
+                color: #2c3e50;
+                margin-bottom: 10px;
+            }
+            pre {
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            code {
+                font-family: Consolas, Monaco, 'Courier New', monospace;
+                background-color: #f8f9fa;
+                padding: 2px 4px;
+                border-radius: 3px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            {{ content | replace("###", "<h2>") | replace("##", "<h1>") | replace("**", "<strong>") | safe }}
+        </div>
+    </body>
+    </html>
+    """
+
+    try:
+        # 转换 markdown 简易符号为 HTML
+        content_html = content.replace("\n\n", "<br><br>").replace("---", "<hr>")
+        template = Template(html_template)
+        rendered_html = template.render(content=content_html)
+
+        # 发送 HTML 到 ntfy（需客户端支持）
+        response = requests.post(
+            f"{NTFY_URL}/{NTFY_TOPIC}",
+            data=rendered_html.encode('utf-8'),
+            headers={
+                "Title": NTFY_TITLE,
+                "Content-Type": "text/html",
+                # "Authorization": f"Bearer {NTFY_TOKEN}",  # 如使用私有 topic 可启用
+            }
+        )
+
+        if response.status_code == 200:
+            logger.info("ntfy HTML 推送成功")
+        else:
+            logger.error(f"ntfy 推送失败，状态码: {response.status_code}, 响应: {response.text}")
+    except Exception as e:
+        logger.error(f"ntfy HTML 推送出错: {str(e)}")
 def main():
     logger.info("开始ArXiv论文跟踪")
     
@@ -337,7 +458,7 @@ def main():
     
     # 发送邮件（只包含当天分析的论文）
     email_content = format_email_content(papers_analyses)
-    send_email(email_content)
+    send_ntfy_html(email_content)
     
     logger.info("ArXiv论文追踪和分析完成")
     logger.info(f"结果已保存至 {CONCLUSION_FILE.absolute()}")
